@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DosPak
+namespace DosPak.Model
 {
-    public class DosPakManager
+    class PakInfo
     {
+        public Header Header;
+        public Dictionary<Char[], FileInfo> FileList;
     }
 }
