@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DosPak.Model
 {
-    class FileInfo
+    public class FileInfo
     {
-        public static UInt32 MAX_PATH_SIZE = 256;
+        public static int MAX_PATH_SIZE = 256;
 
         public Char[] RelativeFilePath;
         public UInt32 OffsetFileInArchive;

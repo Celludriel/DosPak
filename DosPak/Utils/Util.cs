@@ -1,38 +1,56 @@
-﻿using MiscUtil.Conversion;
-using MiscUtil.IO;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DosPak.Utils
 {
     public class Util
     {
-        public static EndianBinaryReader CreateEndianBinaryReaderForStream(Stream stream)
+        public static byte[] Decompress(byte[] gzip)
         {
-            EndianBitConverter endian = GetEndian();
-            EndianBinaryReader reader = new EndianBinaryReader(endian, stream);
-            return reader;
-        }
-
-        public static EndianBinaryWriter CreateEndianBinaryWriterForStream(Stream stream)
-        {
-            EndianBitConverter endian = GetEndian();
-            EndianBinaryWriter writer = new EndianBinaryWriter(endian, stream);
-            return writer;
-        }
-
-        private static EndianBitConverter GetEndian()
-        {
-            EndianBitConverter endian = EndianBitConverter.Big;
-            if (BitConverter.IsLittleEndian)
+            using (GZipStream stream = new GZipStream(new MemoryStream(gzip),
+                                  CompressionMode.Decompress))
             {
-                endian = EndianBitConverter.Little;
+                const int size = 4096;
+                byte[] buffer = new byte[size];
+                using (MemoryStream memory = new MemoryStream())
+                {
+                    int count = 0;
+                    do
+                    {
+                        count = stream.Read(buffer, 0, size);
+                        if (count > 0)
+                        {
+                            memory.Write(buffer, 0, count);
+                        }
+                    }
+                    while (count > 0);
+                    return memory.ToArray();
+                }
             }
-            return endian;
+        }
+
+        public static bool ByteArrayToFile(string fileName, byte[] byteArray)
+        {
+            try
+            {
+                System.IO.FileStream fileStream =
+                   new System.IO.FileStream(fileName, System.IO.FileMode.Create,
+                                            System.IO.FileAccess.Write);
+                fileStream.Write(byteArray, 0, byteArray.Length);
+                fileStream.Close();
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine("Exception caught in process: {0}",
+                                  exception.ToString());
+            }
+            return false;
         }
     }
 }

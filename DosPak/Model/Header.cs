@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DosPak.Model
 {
-    class Header
+    public class Header
     {
         public UInt32 Version;
         public UInt32 DataSectionOffset;
