@@ -22,8 +22,7 @@ namespace DosPak
             string filename = Path.GetFileName(pakArchiveFileName);
             this.PakArchiveName = Path.GetFileNameWithoutExtension(filename);
             this.PakExtention = Path.GetExtension(filename);
-            byte[] pakBinaryFileContent = File.ReadAllBytes(pakArchiveFileName);
-            using (MemoryStream pakArchiveMemoryStream = new MemoryStream(pakBinaryFileContent))
+            using (FileStream pakArchiveMemoryStream = new FileStream(pakArchiveFileName, FileMode.Open))
             {
                 using (BinaryReader pakReader = new BinaryReader(pakArchiveMemoryStream))
                 {
@@ -50,8 +49,7 @@ namespace DosPak
             if (info != null)
             {
                 string archiveFileName = info.IndexArchiveFile > 0 ? this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + "_" + info.IndexArchiveFile + this.PakExtention : this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + this.PakExtention;
-                byte[] pakBinaryFileContent = File.ReadAllBytes(archiveFileName);
-                using (MemoryStream pakArchiveMemoryStream = new MemoryStream(pakBinaryFileContent))
+                using (FileStream pakArchiveMemoryStream = new FileStream(archiveFileName, FileMode.Open))
                 {
                     using (BinaryReader pakReader = new BinaryReader(pakArchiveMemoryStream))
                     {
