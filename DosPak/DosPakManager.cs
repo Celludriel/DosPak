@@ -37,52 +37,7 @@ namespace DosPak
             }
         }
 
-        public void DeleteFile(String fileName)
-        {
-            FileExistInArchive(fileName);
-
-            PakArchiveInformation.FileList.Remove(fileName);
-            Dictionary<String,DosPak.Model.FileInfo>.KeyCollection filesInArchive = PakArchiveInformation.FileList.Keys;
-            PakArchiveInformation.Header.NoOfFilesInArchive = (uint)PakArchiveInformation.FileList.Keys.Count;
-            PakArchiveInformation.Header.LengthFileTable = PakArchiveInformation.Header.NoOfFilesInArchive * FILERECORDSIZE;
-            uint headerBlock = CalculateHeaderBlockSize();
-            PakArchiveInformation.Header.DataSectionOffset = CalculateFullByteBlock(headerBlock);
-
-            UpdateFileOffsetsInFileTable(filesInArchive);
-            UpdatePakArchive();
-        }
-
-        private void UpdateFileOffsetsInFileTable(Dictionary<String, DosPak.Model.FileInfo>.KeyCollection filesInArchive)
-        {
-            uint offset = 0;
-            uint archiveIndex = 0;
-            foreach (String file in filesInArchive)
-            {
-                DosPak.Model.FileInfo info = PakArchiveInformation.FileList[file];
-                if (info.IndexArchiveFile > archiveIndex)
-                {
-                    archiveIndex = info.IndexArchiveFile;
-                    offset = 0;
-                }
-
-                info.OffsetFileInArchive = offset;
-                if (info.CompressedFileSize > 0)
-                {
-                    offset = offset + CalculateFullByteBlock(info.CompressedFileSize);
-                }
-                else
-                {
-                    offset = offset + CalculateFullByteBlock(info.FileSize);
-                }
-            }
-        }
-
-        private uint CalculateHeaderBlockSize()
-        {
-            return HEADERSIZE + FILERECORDSIZE * PakArchiveInformation.Header.NoOfFilesInArchive;
-        }
-
-        private void UpdatePakArchive()
+        public void WritePakArchive()
         {
             for (uint i = 0; i < PakArchiveInformation.Header.NoOfArchiveFiles; i++)
             {
@@ -95,6 +50,7 @@ namespace DosPak
                         if (i == 0)
                         {
                             WriteHeader(pakWriter);
+                            WriteFileInfo(pakWriter);
                         }
 
                         foreach (String file in PakArchiveInformation.FileList.Keys)
@@ -106,6 +62,7 @@ namespace DosPak
                                 int paddingSize = (int)CalculateFullByteBlock((uint)fileData.Length) - fileData.Length;
                                 pakWriter.Write(fileData);
                                 pakWriter.Write(Util.CreatePaddingByteArray(paddingSize));
+                                Console.WriteLine("Wrote " + fileData.Length + " bytes with " + paddingSize + " padding for a total of " + (fileData.Length + paddingSize));
                             }
                             else
                             {
@@ -119,22 +76,19 @@ namespace DosPak
             }
         }
 
-        private void WriteHeader(BinaryWriter pakWriter)
+        public void DeleteFile(String fileName)
         {
-            pakWriter.Write(PakArchiveInformation.Header.Version);
-            pakWriter.Write(PakArchiveInformation.Header.DataSectionOffset);
-            pakWriter.Write(PakArchiveInformation.Header.NoOfArchiveFiles);
-            pakWriter.Write(PakArchiveInformation.Header.LengthFileTable);
-            pakWriter.Write(PakArchiveInformation.Header.Endianness);
-            pakWriter.Write(PakArchiveInformation.Header.NoOfFilesInArchive);
+            FileExistInArchive(fileName);
 
-            uint remainingBytesToDataOffset = PakArchiveInformation.Header.DataSectionOffset - CalculateHeaderBlockSize();
-            pakWriter.Write(Util.CreatePaddingByteArray((int)remainingBytesToDataOffset));
-        }
+            PakArchiveInformation.FileList.Remove(fileName);
+            Dictionary<String,DosPak.Model.FileInfo>.KeyCollection filesInArchive = PakArchiveInformation.FileList.Keys;
+            PakArchiveInformation.Header.NoOfFilesInArchive = (uint)PakArchiveInformation.FileList.Keys.Count;
+            PakArchiveInformation.Header.LengthFileTable = PakArchiveInformation.Header.NoOfFilesInArchive * FILERECORDSIZE;
+            uint headerBlock = CalculateHeaderBlockSize();
+            PakArchiveInformation.Header.DataSectionOffset = CalculateFullByteBlock(headerBlock);
 
-        private static uint CalculateFullByteBlock(uint sizeToAddPaddingTo)
-        {
-            return (UInt32)(Math.Ceiling(sizeToAddPaddingTo / (double)PADDING_BLOCK) * PADDING_BLOCK);
+            UpdateFileOffsetsInFileTable(filesInArchive);
+            WritePakArchive();
         }
 
         public void ExtractFile(String fileName, String outputFolder)
@@ -173,6 +127,65 @@ namespace DosPak
             }
         }
 
+        private void UpdateFileOffsetsInFileTable(Dictionary<String, DosPak.Model.FileInfo>.KeyCollection filesInArchive)
+        {
+            uint offset = 0;
+            uint archiveIndex = 0;
+            foreach (String file in filesInArchive)
+            {
+                DosPak.Model.FileInfo info = PakArchiveInformation.FileList[file];
+                if (info.IndexArchiveFile > archiveIndex)
+                {
+                    archiveIndex = info.IndexArchiveFile;
+                    offset = 0;
+                }
+
+                info.OffsetFileInArchive = offset;
+                if (info.CompressedFileSize > 0)
+                {
+                    offset = offset + CalculateFullByteBlock(info.CompressedFileSize);
+                }
+                else
+                {
+                    offset = offset + CalculateFullByteBlock(info.FileSize);
+                }
+            }
+        }
+
+        private uint CalculateHeaderBlockSize()
+        {
+            return HEADERSIZE + FILERECORDSIZE * PakArchiveInformation.Header.NoOfFilesInArchive;
+        }
+
+        private void WriteFileInfo(BinaryWriter pakWriter)
+        {
+            foreach (DosPak.Model.FileInfo info in PakArchiveInformation.FileList.Values)
+            {
+                pakWriter.Write(info.RelativeFilePath);
+                pakWriter.Write(info.OffsetFileInArchive);
+                pakWriter.Write(info.FileSize);
+                pakWriter.Write(info.CompressedFileSize);
+                pakWriter.Write(info.IndexArchiveFile);
+            }
+            uint remainingBytesToDataOffset = PakArchiveInformation.Header.DataSectionOffset - CalculateHeaderBlockSize();
+            pakWriter.Write(Util.CreatePaddingByteArray((int)remainingBytesToDataOffset));
+        }
+
+        private void WriteHeader(BinaryWriter pakWriter)
+        {
+            pakWriter.Write(PakArchiveInformation.Header.Version);
+            pakWriter.Write(PakArchiveInformation.Header.DataSectionOffset);
+            pakWriter.Write(PakArchiveInformation.Header.NoOfArchiveFiles);
+            pakWriter.Write(PakArchiveInformation.Header.LengthFileTable);
+            pakWriter.Write(PakArchiveInformation.Header.Endianness);
+            pakWriter.Write(PakArchiveInformation.Header.NoOfFilesInArchive);
+        }
+
+        private static uint CalculateFullByteBlock(uint sizeToAddPaddingTo)
+        {
+            return (UInt32)(Math.Ceiling(sizeToAddPaddingTo / (double)PADDING_BLOCK) * PADDING_BLOCK);
+        }
+
         private string BuildArchiveFileName(uint indexOfArchive, String tmpSuffix)
         {
             if (tmpSuffix != null)
@@ -199,7 +212,6 @@ namespace DosPak
 
         private PakInfo LoadPakArchiveInformation(BinaryReader pakReader)
         {
-
             PakInfo pakInfo = new PakInfo();
             pakInfo.Header = ReadHeaderInfo(pakReader);
             pakInfo.FileList = ReadFileListInfo(pakReader, pakInfo.Header.NoOfFilesInArchive);

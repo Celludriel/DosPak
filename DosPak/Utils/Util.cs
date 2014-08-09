@@ -14,7 +14,7 @@ namespace DosPak.Utils
             var arr = new byte[length];
             for (int i = 0; i < arr.Length; i++)
             {
-                arr[i] = 0xAD;
+                arr[i] = 0x00;
             }
             return arr;
         }

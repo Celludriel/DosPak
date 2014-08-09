@@ -17,7 +17,11 @@ namespace DosPak
 
             System.Console.Write(info);
 
-            manager.DeleteFile(info.FileList.Keys.ElementAt(0));
+            //manager.DeleteFile(info.FileList.Keys.ElementAt(0));
+            manager.WritePakArchive();
+
+            manager = new DosPakManager(testpath + "testdata.pak");
+            info = manager.PakArchiveInformation;
 
             foreach (String file in manager.PakArchiveInformation.FileList.Keys)
             {
