@@ -11,6 +11,12 @@ namespace DosPak
 {
     public class DosPakManager
     {
+        public static uint PADDING_BLOCK = 32768;
+        public static uint PADDING = 173;
+        public static uint READBUFFER = 1024;
+        public static uint FILERECORDSIZE = 272;
+        public static uint HEADERSIZE = 21;
+
         private String PakArchiveName = "";
         private String PakExtention = "";
         private String PakPath = "";
@@ -31,9 +37,109 @@ namespace DosPak
             }
         }
 
+        public void DeleteFile(String fileName)
+        {
+            FileExistInArchive(fileName);
+
+            PakArchiveInformation.FileList.Remove(fileName);
+            Dictionary<String,DosPak.Model.FileInfo>.KeyCollection filesInArchive = PakArchiveInformation.FileList.Keys;
+            PakArchiveInformation.Header.NoOfFilesInArchive = (uint)PakArchiveInformation.FileList.Keys.Count;
+            PakArchiveInformation.Header.LengthFileTable = PakArchiveInformation.Header.NoOfFilesInArchive * FILERECORDSIZE;
+            uint headerBlock = CalculateHeaderBlockSize();
+            PakArchiveInformation.Header.DataSectionOffset = CalculateFullByteBlock(headerBlock);
+
+            UpdateFileOffsetsInFileTable(filesInArchive);
+            UpdatePakArchive();
+        }
+
+        private void UpdateFileOffsetsInFileTable(Dictionary<String, DosPak.Model.FileInfo>.KeyCollection filesInArchive)
+        {
+            uint offset = 0;
+            uint archiveIndex = 0;
+            foreach (String file in filesInArchive)
+            {
+                DosPak.Model.FileInfo info = PakArchiveInformation.FileList[file];
+                if (info.IndexArchiveFile > archiveIndex)
+                {
+                    archiveIndex = info.IndexArchiveFile;
+                    offset = 0;
+                }
+
+                info.OffsetFileInArchive = offset;
+                if (info.CompressedFileSize > 0)
+                {
+                    offset = offset + CalculateFullByteBlock(info.CompressedFileSize);
+                }
+                else
+                {
+                    offset = offset + CalculateFullByteBlock(info.FileSize);
+                }
+            }
+        }
+
+        private uint CalculateHeaderBlockSize()
+        {
+            return HEADERSIZE + FILERECORDSIZE * PakArchiveInformation.Header.NoOfFilesInArchive;
+        }
+
+        private void UpdatePakArchive()
+        {
+            for (uint i = 0; i < PakArchiveInformation.Header.NoOfArchiveFiles; i++)
+            {
+                string archiveFileName = BuildArchiveFileName(i, null);
+                string tmpArchiveFileName = BuildArchiveFileName(i, "tmp");
+                using (FileStream tmpArchiveMemoryStream = new FileStream(tmpArchiveFileName, FileMode.Create))
+                {
+                    using (BinaryWriter pakWriter = new BinaryWriter(tmpArchiveMemoryStream))
+                    {
+                        if (i == 0)
+                        {
+                            WriteHeader(pakWriter);
+                        }
+
+                        foreach (String file in PakArchiveInformation.FileList.Keys)
+                        {
+                            DosPak.Model.FileInfo info = PakArchiveInformation.FileList[file];
+                            if (info.IndexArchiveFile == i)
+                            {
+                                byte[] fileData = GetFileAsStream(file, false);
+                                int paddingSize = (int)CalculateFullByteBlock((uint)fileData.Length) - fileData.Length;
+                                pakWriter.Write(fileData);
+                                pakWriter.Write(Util.CreatePaddingByteArray(paddingSize));
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+                File.Delete(archiveFileName);
+                File.Move(tmpArchiveFileName, archiveFileName);
+            }
+        }
+
+        private void WriteHeader(BinaryWriter pakWriter)
+        {
+            pakWriter.Write(PakArchiveInformation.Header.Version);
+            pakWriter.Write(PakArchiveInformation.Header.DataSectionOffset);
+            pakWriter.Write(PakArchiveInformation.Header.NoOfArchiveFiles);
+            pakWriter.Write(PakArchiveInformation.Header.LengthFileTable);
+            pakWriter.Write(PakArchiveInformation.Header.Endianness);
+            pakWriter.Write(PakArchiveInformation.Header.NoOfFilesInArchive);
+
+            uint remainingBytesToDataOffset = PakArchiveInformation.Header.DataSectionOffset - CalculateHeaderBlockSize();
+            pakWriter.Write(Util.CreatePaddingByteArray((int)remainingBytesToDataOffset));
+        }
+
+        private static uint CalculateFullByteBlock(uint sizeToAddPaddingTo)
+        {
+            return (UInt32)(Math.Ceiling(sizeToAddPaddingTo / (double)PADDING_BLOCK) * PADDING_BLOCK);
+        }
+
         public void ExtractFile(String fileName, String outputFolder)
         {
-            byte[] data = GetFileAsStream(fileName);
+            byte[] data = GetFileAsStream(fileName, true);
             if (!Directory.Exists(outputFolder))
             {
                 Directory.CreateDirectory(outputFolder);
@@ -43,35 +149,52 @@ namespace DosPak
             Util.ByteArrayToFile(fileName, data);
         }
 
-        public byte[] GetFileAsStream(String fileName)
+        public byte[] GetFileAsStream(String fileName, bool decompress)
         {
-            Model.FileInfo info = PakArchiveInformation.FileList[fileName];
-            if (info != null)
+            Model.FileInfo info = FileExistInArchive(fileName);
+            string archiveFileName = BuildArchiveFileName(info.IndexArchiveFile, null);
+            using (FileStream pakArchiveMemoryStream = new FileStream(archiveFileName, FileMode.Open))
             {
-                string archiveFileName = info.IndexArchiveFile > 0 ? this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + "_" + info.IndexArchiveFile + this.PakExtention : this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + this.PakExtention;
-                using (FileStream pakArchiveMemoryStream = new FileStream(archiveFileName, FileMode.Open))
+                using (BinaryReader pakReader = new BinaryReader(pakArchiveMemoryStream))
                 {
-                    using (BinaryReader pakReader = new BinaryReader(pakArchiveMemoryStream))
+                    //main archive needs to have a higher offset to take into account header and filetable
+                    uint offset = FindOffsetFile(info);
+                    pakReader.BaseStream.Seek(offset, SeekOrigin.Begin);
+                    byte[] fileContent = pakReader.ReadBytes((int)info.FileSize);
+                    if (info.CompressedFileSize == 0 || !decompress)
                     {
-                        //main archive needs to have a higher offset to take into account header and filetable
-                        uint offset = info.IndexArchiveFile > 0 ? info.OffsetFileInArchive : info.OffsetFileInArchive + PakArchiveInformation.Header.DataSectionOffset;
-                        pakReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                        byte[] fileContent = pakReader.ReadBytes((int)info.FileSize);
-                        if (info.CompressedFileSize == 0)
-                        {
-                            return fileContent;
-                        }
-                        else
-                        {
-                            return Util.Decompress(fileContent);
-                        }
+                        return fileContent;
+                    }
+                    else
+                    {
+                        return Util.Decompress(fileContent);
                     }
                 }
             }
-            else
+        }
+
+        private string BuildArchiveFileName(uint indexOfArchive, String tmpSuffix)
+        {
+            if (tmpSuffix != null)
+            {
+                return indexOfArchive > 0 ? this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + "_" + indexOfArchive + this.PakExtention + "." + tmpSuffix : this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + this.PakExtention + "." + tmpSuffix;
+            }
+            return indexOfArchive > 0 ? this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + "_" + indexOfArchive + this.PakExtention : this.PakPath + Path.DirectorySeparatorChar + this.PakArchiveName + this.PakExtention;
+        }
+
+        private uint FindOffsetFile(Model.FileInfo info)
+        {
+            return info.IndexArchiveFile > 0 ? info.OffsetFileInArchive : info.OffsetFileInArchive + PakArchiveInformation.Header.DataSectionOffset;
+        }
+
+        private Model.FileInfo FileExistInArchive(String fileName)
+        {
+            Model.FileInfo info = PakArchiveInformation.FileList[fileName];
+            if (info == null)
             {
                 throw new Exception("File not found in archive");
             }
+            return info;
         }
 
         private PakInfo LoadPakArchiveInformation(BinaryReader pakReader)
