@@ -15,10 +15,11 @@ namespace DosPak
             DosPakManager manager = new DosPakManager(testpath + "testdata.pak");
             PakInfo info = manager.PakArchiveInformation;
 
-            System.Console.Write(info);
+            DosPakManager fourfilesmanager = new DosPakManager(testpath + "four files.pak");
+            System.Console.Write(fourfilesmanager.PakArchiveInformation);
 
-            //manager.DeleteFile(info.FileList.Keys.ElementAt(0));
-            manager.WritePakArchive();
+            manager.DeleteFile(info.FileList.Keys.ElementAt(0));
+            //manager.WritePakArchive(info);
 
             manager = new DosPakManager(testpath + "testdata.pak");
             info = manager.PakArchiveInformation;

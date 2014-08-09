@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DosPak.Model;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -9,6 +10,38 @@ namespace DosPak.Utils
 {
     public class Util
     {
+        public static PakInfo ClonePakInfo(PakInfo source)
+        {
+            PakInfo target = new PakInfo();
+
+            Header header = new Header();
+            header.Version = source.Header.Version;
+            header.DataSectionOffset = source.Header.DataSectionOffset;
+            header.LengthFileTable = source.Header.LengthFileTable;
+            header.Endianness = source.Header.Endianness;
+            header.NoOfArchiveFiles = source.Header.NoOfArchiveFiles;
+            header.NoOfFilesInArchive = source.Header.NoOfFilesInArchive;
+
+            Dictionary<String, DosPak.Model.FileInfo> fileList = new Dictionary<string, Model.FileInfo>();
+            foreach (String key in source.FileList.Keys)
+            {
+                DosPak.Model.FileInfo targetFileInfo = new DosPak.Model.FileInfo();
+                DosPak.Model.FileInfo sourceFileInfo = source.FileList[key];
+
+                targetFileInfo.RelativeFilePath = sourceFileInfo.RelativeFilePath;
+                targetFileInfo.OffsetFileInArchive = sourceFileInfo.OffsetFileInArchive;
+                targetFileInfo.FileSize = sourceFileInfo.FileSize;
+                targetFileInfo.CompressedFileSize = sourceFileInfo.CompressedFileSize;
+                targetFileInfo.IndexArchiveFile = sourceFileInfo.IndexArchiveFile;
+
+                fileList.Add(key, targetFileInfo);
+            }
+
+            target.Header = header;
+            target.FileList = fileList;
+            return target;
+        }
+
         public static byte[] CreatePaddingByteArray(int length)
         {
             var arr = new byte[length];
