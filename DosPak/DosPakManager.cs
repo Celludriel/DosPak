@@ -12,8 +12,6 @@ namespace DosPak
     public class DosPakManager
     {
         public static uint PADDING_BLOCK = 32768;
-        public static uint PADDING = 173;
-        public static uint READBUFFER = 1024;
         public static uint FILERECORDSIZE = 272;
         public static uint HEADERSIZE = 21;
 

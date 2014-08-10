@@ -1,6 +1,7 @@
 ﻿using DosPak.Model;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -12,13 +13,16 @@ namespace DosPak
         
         static void Main()
         {
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
             DosPakManager manager = new DosPakManager(testpath + "Textures.pak");
             PakInfo info = manager.PakArchiveInformation;
 
             System.Console.Write(info);
 
             //manager.DeleteFile(info.FileList.Keys.ElementAt(0));
-            manager.WritePakArchive(info);
+
+            //manager.WritePakArchive(info);
 
             manager = new DosPakManager(testpath + "Textures.pak");
             info = manager.PakArchiveInformation;
@@ -29,6 +33,8 @@ namespace DosPak
             }
 
             Console.Write(info);
+            watch.Stop();
+            Console.Write(watch.ElapsedMilliseconds);
             Console.ReadKey();
         }
     }

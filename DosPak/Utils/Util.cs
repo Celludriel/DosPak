@@ -104,11 +104,14 @@ namespace DosPak.Utils
         {
             try
             {
-                System.IO.FileStream fileStream =
-                   new System.IO.FileStream(fileName, System.IO.FileMode.Create,
-                                            System.IO.FileAccess.Write);
-                fileStream.Write(byteArray, 0, byteArray.Length);
-                fileStream.Close();
+                string dirName = Path.GetDirectoryName(fileName);
+                if(!Directory.Exists(dirName)){
+                    Directory.CreateDirectory(dirName);
+                }
+
+                using(FileStream fileStream = new FileStream(fileName, FileMode.Create,FileAccess.Write)){
+                    fileStream.Write(byteArray, 0, byteArray.Length);
+                }
 
                 return true;
             }
