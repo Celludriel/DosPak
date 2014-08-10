@@ -63,7 +63,6 @@ namespace DosPak
                                     pakWriter.Write(Util.CreatePaddingByteArray(paddingSize));
                                 }
                             }
-                            pakWriter.Flush();
                         }
                     }
                 }
