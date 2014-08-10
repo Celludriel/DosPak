@@ -37,38 +37,40 @@ namespace DosPak
             {
                 string archiveFileName = BuildArchiveFileName(i, null);
                 string tmpArchiveFileName = BuildArchiveFileName(i, "tmp");
-                using (FileStream tmpArchiveMemoryStream = new FileStream(tmpArchiveFileName, FileMode.Create))
+                try
                 {
-                    using (BinaryWriter pakWriter = new BinaryWriter(tmpArchiveMemoryStream))
+                    using (FileStream tmpArchiveMemoryStream = new FileStream(tmpArchiveFileName, FileMode.Create))
                     {
-                        if (i == 0)
+                        using (BinaryWriter pakWriter = new BinaryWriter(tmpArchiveMemoryStream))
                         {
-                            WriteHeader(pakWriter, pakInfo.Header);
-                            WriteFileInfo(pakWriter, pakInfo.FileList);
-                            uint remainingBytesToDataOffset = pakInfo.Header.DataSectionOffset - CalculateHeaderBlockSize(pakInfo.Header);
-                            pakWriter.Write(Util.CreatePaddingByteArray((int)remainingBytesToDataOffset));
-                        }
+                            if (i == 0)
+                            {
+                                WriteHeader(pakWriter, pakInfo.Header);
+                                WriteFileInfo(pakWriter, pakInfo.FileList);
+                                uint remainingBytesToDataOffset = pakInfo.Header.DataSectionOffset - CalculateHeaderBlockSize(pakInfo.Header);
+                                pakWriter.Write(Util.CreatePaddingByteArray((int)remainingBytesToDataOffset));
+                            }
 
-                        foreach (String file in pakInfo.FileList.Keys)
-                        {
-                            DosPak.Model.FileInfo info = pakInfo.FileList[file];
-                            if (info.IndexArchiveFile == i)
+                            foreach (String file in pakInfo.FileList.Keys)
                             {
-                                Console.WriteLine("Writing " + file);
-                                byte[] fileData = GetFileAsStream(file, false);
-                                int paddingSize = (int)CalculateFullByteBlockSize((uint)fileData.Length) - fileData.Length;
-                                pakWriter.Write(fileData);
-                                pakWriter.Write(Util.CreatePaddingByteArray(paddingSize));
+                                DosPak.Model.FileInfo info = pakInfo.FileList[file];
+                                if (info.IndexArchiveFile == i)
+                                {
+                                    //Console.WriteLine("Writing " + file);
+                                    byte[] fileData = GetFileAsStream(file, false);
+                                    int paddingSize = (int)CalculateFullByteBlockSize((uint)fileData.Length) - fileData.Length;
+                                    pakWriter.Write(fileData);
+                                    pakWriter.Write(Util.CreatePaddingByteArray(paddingSize));
+                                }
                             }
-                            else
-                            {
-                                break;
-                            }
+                            pakWriter.Flush();
                         }
                     }
                 }
-                File.Delete(archiveFileName);
-                File.Move(tmpArchiveFileName, archiveFileName);
+                finally
+                {
+                    File.Replace(tmpArchiveFileName, archiveFileName, null);
+                } 
             }
         }
 

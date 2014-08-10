@@ -12,21 +12,20 @@ namespace DosPak
         
         static void Main()
         {
-            DosPakManager manager = new DosPakManager(testpath + "testdata.pak");
+            DosPakManager manager = new DosPakManager(testpath + "Textures.pak");
             PakInfo info = manager.PakArchiveInformation;
 
-            DosPakManager fourfilesmanager = new DosPakManager(testpath + "four files.pak");
-            System.Console.Write(fourfilesmanager.PakArchiveInformation);
+            System.Console.Write(info);
 
-            manager.DeleteFile(info.FileList.Keys.ElementAt(0));
-            //manager.WritePakArchive(info);
+            //manager.DeleteFile(info.FileList.Keys.ElementAt(0));
+            manager.WritePakArchive(info);
 
-            manager = new DosPakManager(testpath + "testdata.pak");
+            manager = new DosPakManager(testpath + "Textures.pak");
             info = manager.PakArchiveInformation;
 
             foreach (String file in manager.PakArchiveInformation.FileList.Keys)
             {
-                manager.ExtractFile(file, testpath);
+                manager.ExtractFile(file, testpath + "Output\\");
             }
 
             Console.Write(info);
