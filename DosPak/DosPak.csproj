@@ -45,6 +45,7 @@
     <Compile Include="DosPakManager.cs" />
     <Compile Include="Model\Header.cs" />
     <Compile Include="Model\FileInfo.cs" />
+    <Compile Include="Model\NewFileData.cs" />
     <Compile Include="Model\PakInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Run.cs" />

@@ -14,6 +14,7 @@ namespace DosPak
         private static uint PADDING_BLOCK = 32768;
         private static uint FILERECORDSIZE = 272;
         private static uint HEADERSIZE = 21;
+        private static uint MAXPAKFILESIZE = 1073741824;
 
         private String PakArchiveName = "";
         private String PakExtention = "";
@@ -63,6 +64,40 @@ namespace DosPak
             }
         }
 
+        public void UpdateFiles(List<String> fileNames, bool compress)
+        {
+            Dictionary<String, NewFileData> fileData = new Dictionary<string, NewFileData>();
+            foreach (String fileName in fileNames)
+            {
+                if (File.Exists(fileName))
+                {
+                    NewFileData data = new NewFileData();
+                    byte[] byteData = File.ReadAllBytes(fileName);
+                    data.fileSize = (UInt32)byteData.Length;
+                    if (compress)
+                    {
+                        byteData = Util.Compress(byteData);
+                        data.compressedSize = (UInt32)byteData.Length;
+                    }
+                    data.Data = byteData;
+                    fileData.Add(fileName, data);
+                }
+            }
+
+            PakInfo newPakInfo = Util.ClonePakInfo(this.PakArchiveInformation);     
+            foreach (String fileName in fileData.Keys)
+            {
+                DosPak.Model.FileInfo info = new DosPak.Model.FileInfo();
+                info.RelativeFilePath = fileName.ToCharArray();
+                info.FileSize = fileData[fileName].fileSize;
+                info.CompressedFileSize = fileData[fileName].compressedSize;
+                newPakInfo.FileList.Add(fileName, info);
+            }
+            RecalculateFileOffsets(newPakInfo);
+            WritePakArchive(newPakInfo);
+            this.PakArchiveInformation = newPakInfo;
+        }
+
         public byte[] GetFileAsStream(String fileName, bool decompress)
         {
             Model.FileInfo info = GetFileInfoFromArchive(fileName);
@@ -83,6 +118,34 @@ namespace DosPak
                     {
                         return Util.Decompress(fileContent);
                     }
+                }
+            }
+        }
+
+        private void RecalculateFileOffsets(PakInfo pakInfo)
+        {
+            UInt32 offset = pakInfo.Header.DataSectionOffset;
+            UInt32 currentPakFileSize = pakInfo.Header.DataSectionOffset;
+            UInt32 archiveIndex = 0;
+            foreach (DosPak.Model.FileInfo info in pakInfo.FileList.Values)
+            {
+                info.IndexArchiveFile = archiveIndex;
+                info.OffsetFileInArchive = offset;
+                UInt32 fullBlockSize;
+                if(info.CompressedFileSize > 0){
+                    fullBlockSize = CalculateFullByteBlockSize((uint)info.CompressedFileSize);
+                    offset = offset + fullBlockSize;
+                }else{
+                    fullBlockSize = CalculateFullByteBlockSize((uint)info.FileSize);
+                    offset = offset + fullBlockSize;
+                }
+
+                if (offset > MAXPAKFILESIZE)
+                {                    
+                    info.OffsetFileInArchive = 0;
+                    archiveIndex = archiveIndex + 1;
+                    info.IndexArchiveFile = archiveIndex;
+                    offset = offset + fullBlockSize;
                 }
             }
         }
