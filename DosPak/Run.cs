@@ -15,9 +15,9 @@ namespace DosPak
         {
             Stopwatch watch = new Stopwatch();
             watch.Start();
-            DosPakManager manager = new DosPakManager(testpath + "testdata.pak");
+            DosPakManager manager = new DosPakManager(testpath + "Textures.pak");
+            
             PakInfo info = manager.PakArchiveInformation;
-
             System.Console.Write(info);
 
             List<String> files = new List<String>();
@@ -27,15 +27,18 @@ namespace DosPak
 
             //manager.WritePakArchive(info);
 
-            manager = new DosPakManager(testpath + "testdata.pak");
+            manager = new DosPakManager(testpath + "Textures.pak");
             info = manager.PakArchiveInformation;
 
             files.Clear();
             foreach (String file in manager.PakArchiveInformation.FileList.Keys)
             {
-                files.Add(file);
+                if (manager.PakArchiveInformation.FileList[file].IndexArchiveFile == 2)
+                {
+                    files.Add(file);
+                }
             }
-            manager.ExtractFiles(files, testpath + "Output\\");
+            manager.DeleteFiles(files);
 
             Console.Write(info);
             watch.Stop();

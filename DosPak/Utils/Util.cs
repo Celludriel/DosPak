@@ -54,6 +54,7 @@ namespace DosPak.Utils
 
         public static byte[] Decompress(byte[] gzip)
         {
+            byte[] retValue;
             using (GZipStream stream = new GZipStream(new MemoryStream(gzip),
                                   CompressionMode.Decompress))
             {
@@ -71,13 +72,15 @@ namespace DosPak.Utils
                         }
                     }
                     while (count > 0);
-                    return memory.ToArray();
+                    retValue = memory.ToArray();
                 }
             }
+            return retValue;
         }
 
         public static byte[] Compress(byte[] gzip)
         {
+            byte[] retValue;
             using (GZipStream stream = new GZipStream(new MemoryStream(gzip),
                                   CompressionMode.Compress))
             {
@@ -95,9 +98,10 @@ namespace DosPak.Utils
                         }
                     }
                     while (count > 0);
-                    return memory.ToArray();
+                    retValue = memory.ToArray();
                 }
             }
+            return retValue;
         }
 
         public static bool ByteArrayToFile(string fileName, byte[] byteArray)
