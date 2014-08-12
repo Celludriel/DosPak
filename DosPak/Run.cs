@@ -15,22 +15,27 @@ namespace DosPak
         {
             Stopwatch watch = new Stopwatch();
             watch.Start();
-            DosPakManager manager = new DosPakManager(testpath + "Textures.pak");
+            DosPakManager manager = new DosPakManager(testpath + "testdata.pak");
             PakInfo info = manager.PakArchiveInformation;
 
             System.Console.Write(info);
 
-            //manager.DeleteFile(info.FileList.Keys.ElementAt(0));
+            List<String> files = new List<String>();
+            files.Add(testpath + "test1.png");
+            files.Add(testpath + "test2.png");
+            manager.UpdateFiles(files, false);
 
             //manager.WritePakArchive(info);
 
-            manager = new DosPakManager(testpath + "Textures.pak");
+            manager = new DosPakManager(testpath + "testdata.pak");
             info = manager.PakArchiveInformation;
 
+            files.Clear();
             foreach (String file in manager.PakArchiveInformation.FileList.Keys)
             {
-                manager.ExtractFile(file, testpath + "Output\\");
+                files.Add(file);
             }
+            manager.ExtractFiles(files, testpath + "Output\\");
 
             Console.Write(info);
             watch.Stop();

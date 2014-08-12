@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DosPak.Model
 {
-    class NewFileData
+    public class NewFileData
     {
         public byte[] Data;
         public UInt32 fileSize;

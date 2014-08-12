@@ -9,6 +9,7 @@ namespace DosPak.Model
     {
         public Header Header;
         public Dictionary<String, FileInfo> FileList;
+        public Dictionary<String, NewFileData> NewFileList;
 
         public override string ToString()
         {
