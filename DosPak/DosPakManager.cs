@@ -83,16 +83,7 @@ namespace DosPak
             this.PakArchiveInformation = newPakInfo;
         }
 
-        private void RecalculateFileHeader(PakInfo newPakInfo)
-        {
-            UInt32 lastArchiveIndex = RecalculateFileOffsets(newPakInfo);
-            newPakInfo.Header.NoOfArchiveFiles = lastArchiveIndex + 1;
-            newPakInfo.Header.NoOfFilesInArchive = (uint) newPakInfo.FileList.Count();
-            newPakInfo.Header.DataSectionOffset = CalculateFullByteBlockSize(CalculateHeaderBlockSize(newPakInfo.Header.NoOfFilesInArchive));
-            newPakInfo.Header.LengthFileTable = newPakInfo.Header.NoOfFilesInArchive * FILERECORDSIZE;
-        }
-
-        public void UpdateFiles(List<String> fileNames, bool compress)
+        public void UpdateFiles(String basePath, List<String> fileNames, bool compress)
         {
             PakInfo newPakInfo = Util.ClonePakInfo(this.PakArchiveInformation);
             Dictionary<String, NewFileData> fileData = new Dictionary<string, NewFileData>();
@@ -100,10 +91,10 @@ namespace DosPak
             {
                 if (File.Exists(fileName))
                 {
-                    NewFileData data = CreateNewFileData(compress, fileName);
+                    NewFileData data = CreateNewFileData(basePath, compress, fileName);
                     DosPak.Model.FileInfo info = new DosPak.Model.FileInfo();
 
-                    if (newPakInfo.FileList.ContainsKey(data.fileName))
+                    if (newPakInfo.FileList.ContainsKey(data.fileName.PadRight(DosPak.Model.FileInfo.MAX_PATH_SIZE, '\0')))
                     {
                         info = newPakInfo.FileList[data.fileName];
                         info.FileSize = data.fileSize;
@@ -128,19 +119,41 @@ namespace DosPak
             this.PakArchiveInformation = newPakInfo;
         }
 
-        private static NewFileData CreateNewFileData(bool compress, String fileName)
+        private void RecalculateFileHeader(PakInfo newPakInfo)
+        {
+            UInt32 lastArchiveIndex = RecalculateFileOffsets(newPakInfo);
+            newPakInfo.Header.NoOfArchiveFiles = lastArchiveIndex + 1;
+            newPakInfo.Header.NoOfFilesInArchive = (uint)newPakInfo.FileList.Count();
+            newPakInfo.Header.DataSectionOffset = CalculateFullByteBlockSize(CalculateHeaderBlockSize(newPakInfo.Header.NoOfFilesInArchive));
+            newPakInfo.Header.LengthFileTable = newPakInfo.Header.NoOfFilesInArchive * FILERECORDSIZE;
+        }
+
+        private static NewFileData CreateNewFileData(String basePath, bool compress, String fileName)
         {
             NewFileData data = new NewFileData();
-            data.fileName = Path.GetFileName(fileName);
-            byte[] byteData = File.ReadAllBytes(fileName);
-            data.fileSize = (UInt32)byteData.Length;
-            if (compress)
+            if (fileName.Contains(basePath))
             {
-                byteData = Util.Compress(byteData);
-                data.compressedSize = (UInt32)byteData.Length;
+                data.fileName = fileName.Replace(basePath, "");
+                if (data.fileName.StartsWith("\\"))
+                {
+                    data.fileName = data.fileName.Substring(1);
+                }
+                data.fileName = data.fileName.PadRight(DosPak.Model.FileInfo.MAX_PATH_SIZE, '\0');
+
+                byte[] byteData = File.ReadAllBytes(fileName);
+                data.fileSize = (UInt32)byteData.Length;
+                if (compress)
+                {
+                    byteData = Util.Compress(byteData);
+                    data.compressedSize = (UInt32)byteData.Length;
+                }
+                data.Data = byteData;
+                return data;
             }
-            data.Data = byteData;
-            return data;
+            else
+            {
+                throw new Exception("File did not belong to basepath " + basePath);
+            }
         }        
 
         private UInt32 RecalculateFileOffsets(PakInfo pakInfo)

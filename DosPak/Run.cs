@@ -23,7 +23,8 @@ namespace DosPak
             List<String> files = new List<String>();
             files.Add(testpath + "test1.png");
             files.Add(testpath + "test2.png");
-            manager.UpdateFiles(files, false);
+            files.Add(testpath + "\\test\\test2.png");
+            manager.UpdateFiles(testpath, files, false);
 
             //manager.WritePakArchive(info);
 
@@ -38,7 +39,8 @@ namespace DosPak
                     files.Add(file);
                 }
             }
-            manager.DeleteFiles(files);
+            //manager.DeleteFiles(files);
+            manager.ExtractFiles(files, testpath + "\\output");
 
             Console.Write(info);
             watch.Stop();
